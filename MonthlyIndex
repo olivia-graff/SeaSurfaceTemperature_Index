@@ -1,0 +1,267 @@
+latitude = ncread('/mars/parfitt/era5/surface_variables/1979-01.nc','latitude');
+longitude = ncread('/mars/parfitt/era5/surface_variables/1979-01.nc','longitude');
+lat_area = latitude(219:249); % 28 to 36N (217:249); 28 to 35.5 (219:249);
+lon_area = longitude(533:561); % 130 to 145E (521:581); 130 to 141 (521:565); 133-140 (533:561) 
+
+%% Bathymetry onto era5
+latbath = ncread('/home/ograff/BathymetryData/gebco_2021_sub_ice_n90.0_s0.0_w60.0_e180.0.nc','lat');
+lonbath = ncread('/home/ograff/BathymetryData/gebco_2021_sub_ice_n90.0_s0.0_w60.0_e180.0.nc','lon');
+bath = ncread('/home/ograff/BathymetryData/gebco_2021_sub_ice_n90.0_s0.0_w60.0_e180.0.nc','elevation');
+elevation = bath(1:60:end,1:60:end);%takes every 60th row 
+lon2 = lonbath(1:60:end); %now they're of the same size
+lat2 = latbath(1:60:end);
+%[LatBath2,LonBath2] = meshgrid(90:-0.75:-(length(lat2))/(2*4),0:0.75:((length(lon2)-1)/4));%this one works but wont work for new variable
+[LatBath2,LonBath2] = meshgrid(90:-0.25:-90,0:0.25:359.75);
+bathymetry = interp2(lon2,lat2,nanmean(elevation,3)',LonBath2, LatBath2);
+% I think I need to change it to 35.5 (index 219) & 141 (index 565) to get
+% the differencing to work 
+Lonbath2 = squeeze(LonBath2(533:561,1));
+Latbath2 = squeeze(LatBath2(1,219:249));
+% lat_area = latitude(219:249); % 28 to 36N (217:249); 28 to 35.5 (219:249);
+% lon_area = longitude(533:561); % 130 to 145E (521:581); 130 to 141 (521:565); 133-140 (533:561)
+elev = bathymetry(533:561,219:249,1); %gets the elevation values for  only those lat lons
+%% Load in whichever SST/SSTgrad month needed
+yearend = 2018;
+%switches based on whichm month is being used 
+
+%monthvar = "jan"; cont = 292;
+%monthvar = "feb"; %cont = 291.05;
+%monthvar = "dec"; cont = 293.45; 
+%monthvar = "june";%cont =  298.05; 
+monthvar = "mar"; cont = 296
+%monthvar = "nov"; cont = 296
+load('/net/home_stu/ograff/paper/sst/data/'+monthvar+'/sst.mat','perseasonmean_sst'); 
+load('/net/home_stu/ograff/paper/sst/data/'+monthvar+'/sstgradient.mat','perseasonmean_sstgrad'); 
+
+num_years = size(perseasonmean_sst,3); 
+%% Bathymetry contour for index creation 
+[cbath,~] = contour(Lonbath2,Latbath2,elev',[-1000 -1000],'LineStyle','none');
+
+index_sst = [];
+for i = 1:num_years
+    figure(2); 
+    %DJF with 292.5 Isotherm
+    if monthvar == "jan"
+        if i == 6 || i == 35  %filtering out timesteps with double isotherms
+            [cseason,~] = contour(lon_area, lat_area(1:17,:), perseasonmean_sst(:,1:17,i)',[cont cont],'LineStyle','none');
+        else
+            [cseason,~] = contour(lon_area, lat_area, perseasonmean_sst(:,:,i)',[cont cont],'LineStyle','none');
+        end
+    end
+    if monthvar == "feb"
+        [cseason,~] = contour(lon_area, lat_area, perseasonmean_sst(:,:,i)',[cont cont],'LineStyle','none');
+    end
+    if monthvar == "dec"
+        if i == 34 || i == 35 || i == 36  %filtering out timesteps with double isotherms
+            [cseason,~] = contour(lon_area, lat_area(1:15,:), perseasonmean_sst(:,1:15,i)',[cont cont],'LineStyle','none');
+        
+        elseif i == 11
+            [cseason,~] = contour(lon_area, lat_area(1:11,:), perseasonmean_sst(:,1:11,i)',[cont cont],'LineStyle','none');
+        else
+            [cseason,~] = contour(lon_area, lat_area, perseasonmean_sst(:,:,i)',[cont cont],'LineStyle','none');
+        end
+    end
+    if monthvar == "nov"
+        if  i == 7 || i == 10 || i == 31 || i == 32 || i == 34 %filtering out timesteps with double isotherms
+            [cseason,~] = contour(lon_area, lat_area(1:14,:), perseasonmean_sst(:,1:14,i)',[cont cont],'LineStyle','none');
+         elseif i == 36
+            [cseason,~] = contour(lon_area, lat_area(1:11,:), perseasonmean_sst(:,1:11,i)',[cont cont],'LineStyle','none');
+        else
+            [cseason,~] = contour(lon_area, lat_area, perseasonmean_sst(:,:,i)',[cont cont],'LineStyle','none');
+        end
+    end
+    if monthvar == "mar"
+        if  i == 6 || i == 8%filtering out timesteps with double isotherms
+            [cseason,~] = contour(lon_area, lat_area(1:18,:), perseasonmean_sst(:,1:18,i)',[cont cont],'LineStyle','none');
+        else
+            [cseason,~] = contour(lon_area, lat_area, perseasonmean_sst(:,:,i)',[cont cont],'LineStyle','none');
+        end
+    end
+
+    index_isotherm = [];
+    B = [];
+    for n = 1:length(Lonbath2)  
+        val_iso = find(cseason(1,:) == Lonbath2(n,:)); %returns indexes of numbers
+        if monthvar =="feb"
+            if i == 6 %use maxlat because of issues with the contour
+                minlat = find(cseason(2,val_iso) == max(cseason(2,val_iso)));%returns which index gives max lat
+            else
+                minlat = find(cseason(2,val_iso) == min(cseason(2,val_iso)));%returns which index gives min lat
+            end
+        elseif monthvar =="nov"
+            if i == 6 || i ==11 || i == 35 %use maxlat because of issues with the contour
+                minlat = find(cseason(2,val_iso) == max(cseason(2,val_iso)));%returns which index gives max lat
+            else
+                minlat = find(cseason(2,val_iso) == min(cseason(2,val_iso)));%returns which index gives min lat
+            end
+            
+         elseif monthvar =="mar"
+            if i == 6  %use maxlat because of issues with the contour
+                minlat = find(cseason(2,val_iso) == max(cseason(2,val_iso)));%returns which index gives max lat
+            else
+                minlat = find(cseason(2,val_iso) == min(cseason(2,val_iso)));%returns which index gives min lat
+            end
+        else
+            minlat = find(cseason(2,val_iso) == min(cseason(2,val_iso)));%returns which index gives min lat
+        end
+        if isempty(minlat) == 1 %skipping if there aren't any values at that latitude
+            nskip = n;
+            continue
+        end
+        latchoose_iso= cseason(2,val_iso(minlat));
+        index_isotherm = [index_isotherm;latchoose_iso];
+        %same for all years 
+        val = find(cbath(1,:) == Lonbath2(n,:)); %returns indexes of numbers
+        maxlat = find(cbath(2,val) == max(cbath(2,val)));%returns which index gives max lat
+        latchoose= cbath(2,val(maxlat));
+        B = [B;latchoose];
+        
+    end
+    latdiff = 0;
+    latdiff = index_isotherm-B; %degree latitude
+    index_sst = [index_sst;nanmean(latdiff,1)];
+end
+%plot time series 
+ts_sst = timeseries(index_sst(:,1),1979:yearend);
+figure(1);
+hold on; subplot(4,1,4);
+%figure(7);
+plot(ts_sst, '-^', 'MarkerFaceColor','r');ylim([-2 0]);xlabel('Years 1979-2017');ylabel('Δ Latitude');title('Mean Seasonal Meridional Displacement of the Kuroshio Axis - SST -  (133-140; '+monthvar +')');
+
+s = strcat('/net/home_stu/ograff/paper/sst/data/'+monthvar+'/sstindex_new.mat');
+save(s,'index_sst','ts_sst');
+
+%sanity checks through plots to assure that each isotherm is subjectively
+%correct 
+
+% % january 
+% figure (14);
+% load coast; 
+% cont = 291.05;%.25;
+% cont = 292;
+% close all; 
+% for n = 1:40
+%     hold on;pcolor(lon_area,lat_area,perseasonmean_sstgrad(:,:,n)'); shading flat; colorbar;caxis([0 0.05]);
+%     colormap(brewermap(10,'OrRd'));
+%     if n == 6 || n == 35
+%         n
+%         [C,h] = contour(lon_area, lat_area(1:17,:), perseasonmean_sst(:,1:17,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+%     else
+%         [C,h] = contour(lon_area, lat_area, perseasonmean_sst(:,:,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+%     end
+%     year_num = n+1978
+%     plot(long,lat,'black');axis([133 140 28 35.5]);title(monthvar+ " " + year_num + " SST ∇ (shaded) & SST isotherm"); 
+%     drawnow;
+% end
+
+% %february 
+% figure (14);
+% load coast; 
+% cont = 291.05;%.25;
+% close all; 
+% for n = 1:40
+%     hold on;pcolor(lon_area,lat_area,perseasonmean_sstgrad(:,:,n)'); shading flat; colorbar;caxis([0 0.05]);
+%     %colormap(brewermap(10,'OrRd'));
+% %     n == 6
+% %         n
+% %         [C,h] = contour(lon_area, lat_area(1:12,:), perseasonmean_sst(:,1:12,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+% % %     elseif n == 36
+% % %         [C,h] = contour(lon_area, lat_area(1:14,:), perseasonmean_sst(:,1:14,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+% %     else
+%         [C,h] = contour(lon_area, lat_area, perseasonmean_sst(:,:,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+% %     end
+%     year_num = n+1978
+%     plot(long,lat,'black');axis([133 140 28 35.5]);title(monthvar+ " " + year_num + " SST ∇ (shaded) & SST isotherm"); 
+%     drawnow;
+% end
+
+
+% %december 
+% figure (14);
+% load coast; 
+% cont = 293.45;%.25;
+% close all; 
+% for n = 1:40
+%     hold on;pcolor(lon_area,lat_area,perseasonmean_sstgrad(:,:,n)'); shading flat; colorbar;caxis([0 0.05]);
+%     %colormap(brewermap(10,'OrRd'));
+%     if n == 34 || n == 35 || n == 36
+%         n
+%         [C,h] = contour(lon_area, lat_area(1:15,:), perseasonmean_sst(:,1:15,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+%     elseif n == 11
+%         [C,h] = contour(lon_area, lat_area(1:11,:), perseasonmean_sst(:,1:11,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+%     else
+%         [C,h] = contour(lon_area, lat_area, perseasonmean_sst(:,:,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+%     end
+%     year_num = n+1978
+%     plot(long,lat,'black');axis([133 140 28 35.5]);title(monthvar+ " " + year_num + " SST ∇ (shaded) & SST isotherm"); 
+%     drawnow;
+% end
+
+% %june %trash
+% figure (14);
+% load coast; 
+% cont = 297.7;%.25;
+% close all; 
+% for n = 1:40
+%     hold on;pcolor(lon_area,lat_area,perseasonmean_sstgrad(:,:,n)'); shading flat; colorbar;caxis([0 0.05]);
+%     %colormap(brewermap(10,'OrRd'));
+% %     if n == 34 || n == 35 || n == 36
+% %         n
+% %         [C,h] = contour(lon_area, lat_area(1:15,:), perseasonmean_sst(:,1:15,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+% %     elseif n == 11
+% %         [C,h] = contour(lon_area, lat_area(1:11,:), perseasonmean_sst(:,1:11,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+% %     else
+%         [C,h] = contour(lon_area, lat_area, perseasonmean_sst(:,:,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+% %     end
+%     year_num = n+1978
+%     plot(long,lat,'black');axis([133 140 28 35.5]);title(monthvar+ " " + year_num + " SST ∇ (shaded) & SST isotherm"); 
+%     drawnow;
+% end
+
+
+% %november 
+% figure (14);
+% load coast; 
+% cont = 296;%.25;
+% close all; 
+% %n = 6, 11, 35find max lat 
+% %n = 34 skip last lon index
+% for n = 30:40
+%     hold on;pcolor(lon_area,lat_area,perseasonmean_sstgrad(:,:,n)'); shading flat; colorbar;caxis([0 0.05]);
+%     %colormap(brewermap(10,'OrRd'));
+%     if n == 7 || n == 10 || n == 31 || n == 32 
+%         n
+%         [C,h] = contour(lon_area, lat_area(1:14,:), perseasonmean_sst(:,1:14,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+%     elseif n == 36
+%         [C,h] = contour(lon_area, lat_area(1:10,:), perseasonmean_sst(:,1:10,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+%     else
+%         [C,h] = contour(lon_area, lat_area, perseasonmean_sst(:,:,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+%     end
+%     year_num = n+1978
+%     plot(long,lat,'black');axis([133 140 28 35.5]);title(monthvar+ " " + year_num + " SST ∇ (shaded) & SST isotherm"); 
+%     drawnow;
+% end
+
+
+%march 
+figure (14);
+load coast; 
+cont = 291.08;%.25;
+close all; 
+%n = 6 find max lat 
+for n = 1:40%40
+    hold on;pcolor(lon_area,lat_area,perseasonmean_sstgrad(:,:,n)'); shading flat; colorbar;caxis([0 0.05]);
+    %colormap(brewermap(10,'OrRd'));
+    if n == 6 || n == 8% || n == 31 || n == 32 
+        n
+        [C,h] = contour(lon_area, lat_area(1:18,:), perseasonmean_sst(:,1:18,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+%     elseif n == 36
+%         [C,h] = contour(lon_area, lat_area(1:10,:), perseasonmean_sst(:,1:10,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+    else
+        [C,h] = contour(lon_area, lat_area, perseasonmean_sst(:,:,n)',[cont cont],'LineStyle', '-','LineColor','black', 'LineWidth',2); clabel(C,h);
+    end
+    year_num = n+1978
+    plot(long,lat,'black');axis([133 140 28 35.5]);title(monthvar+ " " + year_num + " SST ∇ (shaded) & SST isotherm"); 
+    drawnow;
+end
+
