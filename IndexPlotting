@@ -1,0 +1,44 @@
+%monthly plotting 
+monthvar = ["January";"February";"March";"November";"December"];%;"June";"July";"August"];
+
+%monthvar = ["January";"February"; "December";"DJF"];%;"June";"July";"August"];
+aa_monthvar = ["jan";"feb";"mar";"nov"; "dec"];%"june";"july";"august"];
+timeperiod = "1979-2018";
+
+figure(2);set(gcf,'color','w');
+for n = 1:5
+    load('/net/home_stu/ograff/paper/sst/data/'+aa_monthvar(n)+'/sstindex_new.mat','ts_sst');
+    if aa_monthvar(n) == "DJF"
+        timeperiod = "1979-2017";
+    else
+        timeperiod = "1979-2018";
+    end 
+    subplot(5,1,n); 
+    plot(ts_sst, '-^', 'MarkerFaceColor','r');ylim([-2 0]);
+    xlabel('Years '+timeperiod);ylabel('Δ Latitude');
+    title('Mean Seasonal Meridional Displacement of the Kuroshio Axis - SST - (133-140; '+monthvar(n)+')');
+    clear ts_sst
+end
+
+%1993-2018 D,J,F, DJF
+timeperiod = "1993-2018";
+figure(3);set(gcf,'color','w');
+%1993 is the 15th index 
+for n = 1:5
+    load('/net/home_stu/ograff/paper/sst/data/'+aa_monthvar(n)+'/sstindex_new.mat','index_sst');
+    if aa_monthvar(n) == "DJF"
+        timeperiod = "1993-2017";
+        start = 15; stop = 39; endyear = 2017;
+    else
+        timeperiod = "1993-2018";
+        start = 15; stop = 40; endyear = 2018; 
+    end 
+    subplot(5,1,n); 
+    ts_sst = timeseries(index_sst(start:stop,1),1993:endyear);
+    plot(ts_sst, '-^', 'MarkerFaceColor','r');ylim([-2 0]);
+    xlabel('Years '+timeperiod);ylabel('Δ Latitude');
+    title('Mean Seasonal Meridional Displacement of the Kuroshio Axis - SST - (133-140; '+monthvar(n)+')');
+    s = strcat('/net/home_stu/ograff/paper/sst/data/'+aa_monthvar(n)+'/sstindex_new_sshtimeframe.mat');
+    save(s,'index_sst','ts_sst');
+    clear ts_sst index_sst
+end
