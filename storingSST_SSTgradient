@@ -11,7 +11,7 @@ lenmonth = [124;116;124;120;124];
 % m = ["06";"07";"08"];
 % lenmonth = [120;124;124];
 % 
-yearstart = 1993;yearend = 2018; 
+yearstart = 1979;yearend = 2018; 
 time_size = yearend-yearstart +1;
 nonleap_feb = 112;
 
@@ -28,12 +28,12 @@ for mo = 1:size(monthvar)
         
         if mod(year,4) > 0 && m(mo) == "02"   % if its not a leap year 
             year
-            sst(:,:,year-1992,1:112) = sstdummy;
+            sst(:,:,year-(yearstart-1),1:112) = sstdummy;
             sst3d(:,:,ndays+1:ndays+112) = sstdummy;
-            sst(:,:,year-1992,113:116) = NaN;
+            sst(:,:,year-(yearstart-1),113:116) = NaN;
             sst3d(:,:,ndays+113:ndays+116) = NaN;
         else 
-            sst(:,:,year-1992,1:lenmonth(mo)) = sstdummy;
+            sst(:,:,year-(yearstart-1),1:lenmonth(mo)) = sstdummy;
             sst3d(:,:,ndays+1:ndays+lenmonth(mo)) = sstdummy;
         end
         
@@ -42,8 +42,8 @@ for mo = 1:size(monthvar)
         ndays = ndays +lenmonth(mo); 
         
         %calculate monthly mean
-        b = squeeze(sst(:,:,year-1992,:));
-        permonthmean_sst(:,:,year-1992) = nanmean(b,3); 
+        b = squeeze(sst(:,:,year-(yearstart-1),:));
+        permonthmean_sst(:,:,year-(yearstart-1)) = nanmean(b,3); 
         fclose("all");
     end
     
