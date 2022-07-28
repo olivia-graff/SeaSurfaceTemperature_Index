@@ -1,298 +1,126 @@
-clear all; 
+load('/net/home_stu/ograff/latlon_wholeregion.mat');
+lat_index_start = 181; lat_index_end = 249; %45N - 28N
+lon_index_start= 533; lon_index_end = 641; %133 - 160 E
+    
+%Note: Index region: lat: 28 to 35.5; lon: 133-140
+monthvar = ["jan";"feb";"mar";"nov"; "dec"];
+m = ["01";"02";"03";"11";"12"];
+lenmonth = [124;116;124;120;124];
 
-latitude = ncread('/net/home_stu/ograff/downloadtemp_hrly/temp2m/1979-01.nc','latitude');
-longitude = ncread('/net/home_stu/ograff/downloadtemp_hrly/temp2m/1979-01.nc','longitude');
-lat_index_start = 219; lat_index_end = 249; lon_index_start= 533;
-lon_index_end = 561; %what sst index uses -- but need to save larger region
-
-% lat_index_start = 181; lat_index_end = 249; %45N - 28N 
-% lon_index_start= 533; lon_index_end = 641; %133 - 160 E  
-
-lat_area = latitude(lat_index_start:lat_index_end); % 28 to 36N (217:249); 28 to 35.5 (219:249);
-lon_area = longitude(lon_index_start:lon_index_end); % 130 to 145E (521:581); 130 to 141 (521:565); 133-140 (533:561)
-
-%switches to determine which season/month is being used 
-savevar = 0; monthly = 0; 
-djf = 0; mam = 0; jja = 0;son = 0;annual = 0; march = 1; nov = 0; 
-
-%month = [1,2,3]; 
-yearstart = 1979;yearend = 2018; 
-num_years = yearend-yearstart +1;
-timeperiod = " 1979 - 2018"; 
-
-if djf == 1 
-    m = ["01";"02";"12"];lenmonth = [124,116,124]; 
-    aa_monthvar = "DJF";
-elseif mam == 1
-    m = ["03";"04";"05"];lenmonth = [124,120,124]; 
-    aa_monthvar = "MAM";
-elseif jja == 1
-    m = ["06";"07";"08"];lenmonth = [120,124,124]; 
-    aa_monthvar = "JJA";
-elseif son == 1
-    m = ["09";"10";"11"];lenmonth = [120,124,120]; 
-    aa_monthvar = "SON";
-elseif annual == 1
-    m = ["01";"02";"03";"04";"05";"06";"07";"08";"09";"10";"11";"12"];
-    lenmonth = [124,116,124,120,124,120,124,124,120,124,120,124];
-    aa_monthvar = "Annual";
-elseif march == 1
-m = ["03"];lenmonth = [124]; aa_monthvar = "mar"; lenseason = 124; 
-
-elseif nov == 1
-m = ["11"];lenmonth = [120]; aa_monthvar = "nov"; lenseason = 120;
-end
-
-%loading in all of the sst data
-time_size = num_years; %* length(m);
-moend = cumsum(lenmonth);mostart = [1,moend(1)+1, moend(2)+1];lenseason = moend(end);
+% monthvar = ["jun";"jul";"aug"];
+% m = ["06";"07";"08"];
+% lenmonth = [120;124;124];
+% 
+yearstart = 1993;yearend = 2018; 
+time_size = yearend-yearstart +1;
 nonleap_feb = 112;
-seasoncount = 0; djfcount = 0; 
-sst = NaN*zeros(size(lon_area,1),size(lat_area,1),num_years*lenmonth); 
-sstvar = 'sst';
-monthcount = 0; mo = 0; 
-for year = yearstart:yearend
-    file1 = '/mars/parfitt/era5/surface_variables/';
-    file2 = num2str(year);
-    file3 = '-';
-    seasoncount = seasoncount + 1; 
-    for month = 1:length(m)%monum%mo(2)%1:length(m)
-        file4 = m(month);%m_fp(month); %finds str value of the m array above
-        file5 = '.nc';
+
+for mo = 1:size(monthvar)    
+    mo
+    sst = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size,lenmonth(mo));
+    sst3d = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size*lenmonth(mo));
+    permonthmean_sst = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
+    ndays = 0;
+    for year = yearstart:yearend
+        file1 = '/mars/parfitt/era5/surface_variables/';file2 = num2str(year);file3 = '-';file4 =m(mo);file5 = '.nc';
         file = strcat(file1,file2,file3,file4,file5)
-        sstdummy = ncread(file,'sst',[lon_index_start lat_index_start 1],[29 31 Inf]);
-        if annual == 1 || djf == 1 %could just say if m(month) == "02" 
-            if month == 2
-                if mod(year,4) > 0 %nonleapyear
-                    sst(:,:,mo+1:mo+112) = sstdummy;
-                    sst(:,:,mo+113:mo+116) = NaN;
-                else
-                    sst(:,:,mo+1:mo+lenmonth(month)) = sstdummy;
-                end
-            else
-                sst(:,:,mo+1:mo+lenmonth(month)) = sstdummy;
-            end
-        else
-                sst(:,:,mo+1:mo+lenmonth(month)) = sstdummy;
+        sstdummy = ncread(file,'sst',[lon_index_start lat_index_start 1],[109 69 Inf]);
+        
+        if mod(year,4) > 0 && m(mo) == "02"   % if its not a leap year 
+            year
+            sst(:,:,year-1992,1:112) = sstdummy;
+            sst3d(:,:,ndays+1:ndays+112) = sstdummy;
+            sst(:,:,year-1992,113:116) = NaN;
+            sst3d(:,:,ndays+113:ndays+116) = NaN;
+        else 
+            sst(:,:,year-1992,1:lenmonth(mo)) = sstdummy;
+            sst3d(:,:,ndays+1:ndays+lenmonth(mo)) = sstdummy;
         end
         
-        mo = mo + lenmonth(month); 
-
-        fclose('all');
-    end
-end
-
-%formatting djf SEASONALLY correctly 
-if djf == 1 && monthly == 0 
-    %remove first jan/feb, and last december
-    %first jan and feb = indecies 1:240; then last december = indecies 14437:14560
-    sst = sst(:,:,241:size(sst,3)-124);
-    lenmonth = [124,124,116]; %reformatting to be D J F - doesnt matter, still the same length 
-    time_size = time_size -1; 
-end
-
-%formatting seasonally 
-sst_reformat = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size,lenseason); 
-b = 0; 
-for n = 1:time_size
-    sst_reformat(:,:,n,1:lenseason) = sst(:,:,b+1:b+lenseason);
-    b = b+lenseason; 
-end
-
-%Storing monthly/seasonally -- this could be done in a much cleaner way--
-%but using the brute force method 
-if monthly == 1 && jja == 1
-    sst_june = sst_reformat(:,:,:,1:120); 
-    sst_july = sst_reformat(:,:,:,121:244);
-    sst_aug = sst_reformat(:,:,:,245:368);
-    perseasonmean_sstjune = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    perseasonmean_sstjuly = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    perseasonmean_sstaug = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    for n = 1:time_size
-        a = squeeze(sst_june(:,:,n,:));
-        perseasonmean_sstjune(:,:,n) = nanmean(a,3);
-        a = squeeze(sst_july(:,:,n,:));
-        perseasonmean_sstjuly(:,:,n) = nanmean(a,3);
-        a = squeeze(sst_aug(:,:,n,:));
-        perseasonmean_sstaug(:,:,n) = nanmean(a,3);
-    end
-elseif monthly == 1 && djf == 1
-    sst_jan = sst_reformat(:,:,:,1:124); 
-    sst_feb = sst_reformat(:,:,:,125:240);
-    sst_dec = sst_reformat(:,:,:,241:364);
-    perseasonmean_sstdec = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    perseasonmean_sstjan = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    perseasonmean_sstfeb = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    for n = 1:time_size
-        a = squeeze(sst_dec(:,:,n,:));
-        perseasonmean_sstdec(:,:,n) = nanmean(a,3);
-        a = squeeze(sst_jan(:,:,n,:));
-        perseasonmean_sstjan(:,:,n) = nanmean(a,3);
-        a = squeeze(sst_feb(:,:,n,:));
-        perseasonmean_sstfeb(:,:,n) = nanmean(a,3);
+        %counter for 3d variable that resets after moving onto the next
+        %month
+        ndays = ndays +lenmonth(mo); 
+        
+        %calculate monthly mean
+        b = squeeze(sst(:,:,year-1992,:));
+        permonthmean_sst(:,:,year-1992) = nanmean(b,3); 
+        fclose("all");
     end
     
-else
-    perseasonmean_sst = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
+    %save data
+    s = strcat('/net/home_stu/ograff/chapter1/data/sstdata_9318/',monthvar(mo),'_sst_wholeregion.mat');
+    save(s,'sst','sst3d','permonthmean_sst');
+    
+    %slice/save data over kuroshio meander index region 
+    sst = sst(1:29,39:69,:,:);
+    sst3d = sst3d(1:29,39:69,:);
+    permonthmean_sst = permonthmean_sst(1:29,39:69,:,:);
+    
+    s = strcat('/net/home_stu/ograff/chapter1/data/sstdata_9318/',monthvar(mo),'_sst_indexregion.mat');
+    save(s,'sst','sst3d','permonthmean_sst');   
+ 
+end
+
+if yearstart == 1993
+    sstfile = '9318';
+else 
+    sstfile = '7918';
+end
+
+%SST gradient
+for mo = 1:size(monthvar)
+    
+    s = strcat('/net/home_stu/ograff/chapter1/data/sstdata_',sstfile,'/',monthvar(mo),'_sst_wholeregion.mat');load(s,'sst');
+    sstgrad = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size,lenmonth(mo));
+    sstgrad3d = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size*lenmonth(mo));
+    count = 0;
     for n = 1:time_size
-        a = squeeze(sst_reformat(:,:,n,:));
-        perseasonmean_sst(:,:,n) = nanmean(a,3);
-    end
-end
-
-%slicing down variable to be able to save it 
-if annual == 1
-    sst_reformat_7998 = sst_reformat(:,:,1:20,:); 
-    sst_reformat_9918 = sst_reformat(:,:,21:40,:); 
-    sst_7998 = sst(:,:,1:7280); 
-    sst_9918 = sst(:,:,7281:14560); 
-end
-
-%saving variables for later use 
-if savevar == 1
-    if annual == 1
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sst_wholeregion.mat');
-        save(s,'sst_reformat_7998','sst_reformat_9918','sst_7998','sst_9918','perseasonmean_sst');
-    elseif monthly == 1 && jja ==1
-        %june
-        aa_monthvar = "june"; perseasonmean_sst = perseasonmean_sstjune; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sst_wholeregion.mat');
-        save(s,'sst_reformat','perseasonmean_sst');
-        %july
-        aa_monthvar = "july"; perseasonmean_sst = perseasonmean_sstjuly; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sst_wholeregion.mat');
-        save(s,'sst_reformat','perseasonmean_sst');
-         %august
-        aa_monthvar = "august"; perseasonmean_sst = perseasonmean_sstaug; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sst_wholeregion.mat');
-        save(s,'sst_reformat','perseasonmean_sst');
-        
-   elseif monthly == 1 && djf ==1
-        aa_monthvar = "dec"; perseasonmean_sst = perseasonmean_sstdec; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sst.mat');
-        save(s,'sst_reformat','perseasonmean_sst');
-        aa_monthvar = "jan"; perseasonmean_sst = perseasonmean_sstjan; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sst.mat');
-        save(s,'sst_reformat','perseasonmean_sst');
-        aa_monthvar = "feb"; perseasonmean_sst = perseasonmean_sstfeb; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sst.mat');
-        save(s,'sst_reformat','perseasonmean_sst');
-    else
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sst.mat');
-        save(s,'sst','sst_reformat','perseasonmean_sst');
-    end
-
-end
-
-%% SST gradient 
-
-% Calculate sst gradient
-sstgrad_reformat = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size,lenseason); 
-sstgrad = NaN*zeros(size(lon_area,1),size(lat_area,1), 1); 
-%dummysst = NaN*zeros(size(lon_area,1),size(lat_area,1), lenmonth(month));
-count = 0;
-for n = 1:time_size
-    dummysst = squeeze(sst_reformat(:,:,n,:));
-    for nn = 1:lenseason
-        count = count +1;
-        [climagradY,climagradX] = gradient(squeeze(sst_reformat(:,:,n,nn)));
-        dy = 6371000*0.25*pi/180; %0.25 resolution
-        climagradY = climagradY/dy;
-        for j = 1:length(lat_area)
-            dx = 6371000*cosd(lat_area(j))*0.25*pi/180; %0.25 resolution
-            climagradX(:,j)=climagradX(:,j)/dx;
+        dummysst = squeeze(sst(:,:,n,:));
+        for nn = 1:lenmonth(mo)
+            count = count +1;
+            [climagradY,climagradX] = gradient(squeeze(sst(:,:,n,nn)));
+            dy = 6371000*0.25*pi/180; %0.25 resolution
+            climagradY = climagradY/dy;
+            for j = 1:size(lat_area,1)
+                dx = 6371000*cosd(lat_area(j))*0.25*pi/180; %0.25 resolution
+                climagradX(:,j)=climagradX(:,j)/dx;
+            end
+            %climategradient=sqrt((climagradX.*climagradX)+(climagradY.*climagradY));
+            dummysst(:,:,nn) = sqrt((climagradX.*climagradX)+(climagradY.*climagradY));
+            sstgrad3d(:,:,count) = sqrt((climagradX.*climagradX)+(climagradY.*climagradY));
         end
-        %climategradient=sqrt((climagradX.*climagradX)+(climagradY.*climagradY));
-        dummysst(:,:,nn) = sqrt((climagradX.*climagradX)+(climagradY.*climagradY));
-        sstgrad(:,:,count) = sqrt((climagradX.*climagradX)+(climagradY.*climagradY));
+        sstgrad(:,:,n,1:lenmonth(mo)) = dummysst;
     end
-    sstgrad_reformat(:,:,n,1:lenseason) = dummysst;
-end
-%K/km 
-sstgrad_reformat = sstgrad_reformat .*1000; 
-sstgrad = sstgrad.*1000; 
-
-%Storing monthly/seasonally -- this could be done in a much cleaner way--
-%but using the brute force method 
-if monthly == 1 && jja == 1
-    sstgrad_june = sstgrad_reformat(:,:,:,1:120); 
-    sstgrad_july = sstgrad_reformat(:,:,:,121:244);
-    sstgrad_aug = sstgrad_reformat(:,:,:,245:368);
-    perseasonmean_sstgradjune = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    perseasonmean_sstgradjuly = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    perseasonmean_sstgradaug = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
+    
+    %K/m -> K/km
+    sstgrad = sstgrad.*1000; 
+    sstgrad3d = sstgrad3d.*1000; 
+    
+    permonthmean_sstgrad = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
     for n = 1:time_size
-        a = squeeze(sstgrad_june(:,:,n,:));
-        perseasonmean_sstgradjune(:,:,n) = nanmean(a,3);
-        a = squeeze(sstgrad_july(:,:,n,:));
-        perseasonmean_sstgradjuly(:,:,n) = nanmean(a,3);
-        a = squeeze(sstgrad_aug(:,:,n,:));
-        perseasonmean_sstgradaug(:,:,n) = nanmean(a,3);
+        a = squeeze(sstgrad(:,:,n,:));
+        permonthmean_sstgrad(:,:,n) = nanmean(a,3);
     end
-elseif monthly == 1 && djf == 1
-    sstgrad_jan = sstgrad_reformat(:,:,:,1:124); 
-    sstgrad_feb = sstgrad_reformat(:,:,:,125:240);
-    sstgrad_dec = sstgrad_reformat(:,:,:,241:364);
-    perseasonmean_sstgraddec = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    perseasonmean_sstgradjan = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    perseasonmean_sstgradfeb = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    for n = 1:time_size
-        a = squeeze(sstgrad_dec(:,:,n,:));
-        perseasonmean_sstgraddec(:,:,n) = nanmean(a,3);
-        a = squeeze(sstgrad_jan(:,:,n,:));
-        perseasonmean_sstgradjan(:,:,n) = nanmean(a,3);
-        a = squeeze(sstgrad_feb(:,:,n,:));
-        perseasonmean_sstgradfeb(:,:,n) = nanmean(a,3);
-    end
-else
-    perseasonmean_sstgrad = NaN*zeros(size(lon_area,1),size(lat_area,1),time_size);
-    for n = 1:time_size
-        a = squeeze(sstgrad_reformat(:,:,n,:));
-        perseasonmean_sstgrad(:,:,n) = nanmean(a,3);
-    end
+    s = strcat('/net/home_stu/ograff/chapter1/data/sstgraddata_',sstfile,'/',monthvar(mo),'_sstgrad_wholeregion.mat');
+    save(s,'sstgrad','sstgrad3d','permonthmean_sstgrad');
+    
+    sstgrad = sstgrad(1:29,39:69,:,:);
+    sstgrad3d = sstgrad3d(1:29,39:69,:);
+    permonthmean_sstgrad = permonthmean_sstgrad(1:29,39:69,:,:);
+    
+    s = strcat('/net/home_stu/ograff/chapter1/data/sstgraddata_',sstfile,'/',monthvar(mo),'_sstgrad_indexregion.mat');
+    save(s,'sstgrad','sstgrad3d','permonthmean_sstgrad');
 end
 
-%slicing down variable to be able to save it 
-if annual == 1
-    sstgrad_reformat_7998 = sstgrad_reformat(:,:,1:20,:); 
-    sstgrad_reformat_9918 = sstgrad_reformat(:,:,21:40,:); 
-    sstgrad_7998 = sstgrad(:,:,1:7280); 
-    sstgrad_9918 = sstgrad(:,:,7281:14560); 
+    
+  lon2 = lon_area(1:29,1);
+  lat2 = lat_area(39:69,1);
+figure; 
+for n = 1:26    
+    
+    pcolor(lon2,lat2,permonthmean_sstgrad(:,:,n)'); shading interp; colorbar;
+    drawnow; 
 end
 
-%saving variables for future use  
-if savevar == 1
-    if annual == 1
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sstgradient_wholeregion.mat');
-        save(s,'sstgrad_reformat_7998','sstgrad_reformat_9918','sstgrad_7998','sstgrad_9918','perseasonmean_sstgrad');
-    elseif monthly == 1 && jja ==1
-        %june
-        aa_monthvar = "june"; perseasonmean_sstgrad = perseasonmean_sstgradjune; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sstgradient_wholeregion.mat');
-        save(s,'sstgrad_reformat','perseasonmean_sstgrad');
-        %july
-        aa_monthvar = "july"; perseasonmean_sstgrad = perseasonmean_sstgradjuly; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sstgradient_wholeregion.mat');
-        save(s,'sstgrad_reformat','perseasonmean_sstgrad');
-         %august
-        aa_monthvar = "august"; perseasonmean_sstgrad = perseasonmean_sstgradaug; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sstgradient_wholeregion.mat');
-        save(s,'sstgrad_reformat','perseasonmean_sstgrad');
-    elseif monthly == 1 && djf ==1
-        %june
-        aa_monthvar = "dec"; perseasonmean_sstgrad = perseasonmean_sstgraddec; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sstgradient.mat');
-        save(s,'sstgrad_reformat','perseasonmean_sstgrad');
-        %july
-        aa_monthvar = "jan"; perseasonmean_sstgrad = perseasonmean_sstgradjan; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sstgradient.mat');
-        save(s,'sstgrad_reformat','perseasonmean_sstgrad');
-         %august
-        aa_monthvar = "feb"; perseasonmean_sstgrad = perseasonmean_sstgradfeb; 
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sstgradient.mat');
-        save(s,'sstgrad_reformat','perseasonmean_sstgrad');
-    else
-        s = strcat('/net/home_stu/ograff/paper/sst/data/',aa_monthvar,'/sstgradient.mat');
-        save(s,'sstgrad','sstgrad_reformat','perseasonmean_sstgrad');
-    end
-end
+    
+    
